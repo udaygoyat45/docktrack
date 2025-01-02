@@ -1,0 +1,21 @@
+(library
+ (name auto_documentation)
+ (modules ))
+
+(library
+ (name feature_update)
+ (modules feature_update))
+
+(library
+ (name feature_tree)
+ (modules feature_tree)
+ (libraries feature_update ds_utils))
+
+(library
+ (name ds_utils)
+ (modules ds_utils))
+
+(library
+ (name pretty_print)
+ (modules pretty_print)
+ (libraries feature_tree))

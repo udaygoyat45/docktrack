@@ -1,0 +1,10 @@
+(executable
+ (public_name auto_documentation)
+ (name main)
+ (libraries 
+   auto_documentation
+   feature_tree
+   feature_update
+   ds_utils
+   pretty_print
+ ))
