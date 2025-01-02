@@ -29,3 +29,11 @@ let feature_tree =
   )
 
 let _ = FeatureTree.print_tree feature_tree
+
+let feature_tree = 
+  FeatureTree.(
+    feature_tree 
+    |> remove_feature "child1"
+  )
+
+let _ = FeatureTree.print_tree feature_tree

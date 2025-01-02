@@ -13,9 +13,10 @@
 
 (library
  (name ds_utils)
- (modules ds_utils))
+ (modules ds_utils)
+ (libraries pretty_print))
 
 (library
  (name pretty_print)
  (modules pretty_print)
- (libraries feature_tree))
+ )
