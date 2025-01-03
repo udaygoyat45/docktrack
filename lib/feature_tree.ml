@@ -26,8 +26,8 @@ module FeatureTree = struct
     name: string;
     parent: string option;
     children: StringSet.t;
-    documented_updates: FeatureUpdateSet.t;
-    undocumented_updates: FeatureUpdateSet.t;
+    documented_updates: FeatureUpdate.t list;
+    undocumented_updates: FeatureUpdate.t list;
   }
 
   type ft = {
@@ -44,8 +44,8 @@ module FeatureTree = struct
     name=name;
     depth=depth;
     metadata=metadata;
-    documented_updates=FeatureUpdateSet.empty;
-    undocumented_updates=FeatureUpdateSet.empty;
+    documented_updates=[];
+    undocumented_updates=[];
     parent=parent_name;
     children=StringSet.empty;
   }
@@ -77,7 +77,6 @@ module FeatureTree = struct
         |> StringMap.add name feature in
       {feature_map=feature_map'; root_name}
   
-
   let get_feature name {feature_map; _}= 
     match StringMap.find_opt name feature_map with
     | None -> raise MissingFeature
@@ -105,7 +104,14 @@ module FeatureTree = struct
       | Some name -> name in
     let feature_map' = StringMap.update parent_name (remove_child_aux feature_name) feature_tree.feature_map in
     remove_feature_aux {feature_map=feature_map'; root_name=feature_tree.root_name} feature_name 
-  
+
+  (* Code for manipulating updates to a feature *)
+  let add_update (update: FeatureUpdate.t) feature_name feature_tree = 
+    let feature = get_feature feature_name feature_tree in
+    match update.status with
+    | FeatureUpdate.Documented -> {feature with documented_updates = update :: feature.documented_updates}
+    | FeatureUpdate.Undocumented -> {feature with undocumented_updates = update :: feature.undocumented_updates}
+    
   let string_of_feature feature =
     (PrettyPrint.n_block feature.depth) ^ PrettyPrint.branch ^ " " ^ feature.name
   
@@ -116,4 +122,11 @@ module FeatureTree = struct
 
   let print_tree {root_name; feature_map} = 
     print_tree_aux feature_map root_name
-end 
+  
+  let print_updates feature_name feature_tree = 
+    let feature = get_feature feature_name feature_tree in
+    Printf.printf "Documented updates:\n";
+    print_string ( FeatureUpdate.string_of_updates feature.documented_updates );
+    Printf.printf "Undocumented updates:\n";
+    print_string ( FeatureUpdate.string_of_updates feature.undocumented_updates );
+end

@@ -4,7 +4,8 @@
 
 (library
  (name feature_update)
- (modules feature_update))
+ (modules feature_update)
+ )
 
 (library
  (name feature_tree)
