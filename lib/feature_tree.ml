@@ -4,7 +4,7 @@ open Pretty_print
 (* 
 Feature Tree Needs To Support 3 Essential Features
 [x] Addition/Deletion of Features
-[ ] Chronological Addition of Updates 
+[x] Chronological Addition of Updates 
 [ ] Addition/Deletion of Targetted Files
 *)
 
@@ -35,10 +35,12 @@ module FeatureTree = struct
     feature_map: t ft_map
   }
 
-  exception MissingParentFeature
-  exception DuplicateFeatureName
-  exception DeletingProjectRoot
-  exception MissingFeature
+  exception MissingParentFeature of string
+  exception DuplicateFeatureName of string
+  exception DeletingProjectRoot of string
+  exception MissingFeature of string
+
+  exception EmptyUndocumentedUpdates
 
   let empty_feature_aux name parent_name depth metadata = {
     name=name;
@@ -50,7 +52,7 @@ module FeatureTree = struct
     children=StringSet.empty;
   }
 
-  let init_project project_name metadata = 
+  let empty_feature_tree project_name metadata = 
     let feature = empty_feature_aux project_name None 0 metadata in
     let feature_map = StringMap.(empty |> add project_name feature) in 
     { root_name=project_name; feature_map}
@@ -67,9 +69,9 @@ module FeatureTree = struct
 
   let add_feature name parent_name metadata {feature_map; root_name} =
     if StringMap.find_opt name feature_map <> None then
-      raise DuplicateFeatureName;
+      raise (DuplicateFeatureName name);
     match StringMap.find_opt parent_name feature_map with
-    | None -> raise MissingParentFeature
+    | None -> raise (MissingParentFeature parent_name)
     | Some parent_feature -> 
       let feature = empty_feature_aux name (Some parent_name) (parent_feature.depth + 1) metadata in
       let feature_map' = feature_map
@@ -79,7 +81,7 @@ module FeatureTree = struct
   
   let get_feature name {feature_map; _}= 
     match StringMap.find_opt name feature_map with
-    | None -> raise MissingFeature
+    | None -> raise (MissingFeature name)
     | Some feature -> feature
   
   let rec remove_feature_aux feature_tree feature_name =
@@ -96,11 +98,11 @@ module FeatureTree = struct
 
   let remove_feature feature_name feature_tree = 
     if feature_tree.root_name = feature_name then
-      raise DeletingProjectRoot;
+      raise (DeletingProjectRoot feature_name);
     let feature = get_feature feature_name feature_tree in
     let parent_name = 
       match feature.parent with
-      | None -> raise DeletingProjectRoot
+      | None -> raise (DeletingProjectRoot feature_name)
       | Some name -> name in
     let feature_map' = StringMap.update parent_name (remove_child_aux feature_name) feature_tree.feature_map in
     remove_feature_aux {feature_map=feature_map'; root_name=feature_tree.root_name} feature_name 
@@ -108,12 +110,35 @@ module FeatureTree = struct
   (* Code for manipulating updates to a feature *)
   let add_update (update: FeatureUpdate.t) feature_name feature_tree = 
     let feature = get_feature feature_name feature_tree in
-    match update.status with
+    let feature' = match update.status with
     | FeatureUpdate.Documented -> {feature with documented_updates = update :: feature.documented_updates}
-    | FeatureUpdate.Undocumented -> {feature with undocumented_updates = update :: feature.undocumented_updates}
-    
+    | FeatureUpdate.Undocumented -> {feature with undocumented_updates = update :: feature.undocumented_updates} in
+    let feature_map' = StringMap.update feature_name (fun _ -> Some feature') feature_tree.feature_map in
+    {feature_map=feature_map'; root_name=feature_tree.root_name}
+
+  let oldest_undocumented_update feature_name feature_tree = 
+    let feature = get_feature feature_name feature_tree in
+    List.hd feature.undocumented_updates
+
+  let newest_documented_update feature_name feature_tree = 
+    let feature = get_feature feature_name feature_tree in
+    List.hd feature.documented_updates
+
+  let document_next_update feature_name feature_tree = 
+    let feature = get_feature feature_name feature_tree in
+    match feature.undocumented_updates with
+    | [] -> raise EmptyUndocumentedUpdates
+    | update :: undocumented_updates' -> 
+      let documented_updates' = update :: feature.documented_updates in
+      let feature' = {feature with undocumented_updates=undocumented_updates'; documented_updates=documented_updates'} in
+      let feature_map' = StringMap.update feature_name (fun _ -> Some feature') feature_tree.feature_map in
+      {feature_map=feature_map'; root_name=feature_tree.root_name}
+
   let string_of_feature feature =
-    (PrettyPrint.n_block feature.depth) ^ PrettyPrint.branch ^ " " ^ feature.name
+    if feature.depth = 0 then
+      feature.name
+    else
+    (PrettyPrint.n_block (feature.depth - 1)) ^ PrettyPrint.branch ^ " " ^ feature.name
   
   let rec print_tree_aux feature_map feature_name = 
     let feature = StringMap.find feature_name feature_map in
@@ -125,8 +150,15 @@ module FeatureTree = struct
   
   let print_updates feature_name feature_tree = 
     let feature = get_feature feature_name feature_tree in
-    Printf.printf "Documented updates:\n";
-    print_string ( FeatureUpdate.string_of_updates feature.documented_updates );
-    Printf.printf "Undocumented updates:\n";
-    print_string ( FeatureUpdate.string_of_updates feature.undocumented_updates );
+    Printf.printf "Documented updates (latest to oldest):\n";
+    if List.length feature.documented_updates > 0 then
+      print_string ( FeatureUpdate.string_of_updates feature.documented_updates )
+    else
+      Printf.printf "** No documented updates **\n";
+    Printf.printf "Undocumented updates (latest to oldest):\n";
+    if List.length feature.undocumented_updates > 0 then
+      print_string ( FeatureUpdate.string_of_updates feature.undocumented_updates )
+    else  
+      Printf.printf "** No undocumented updates **\n"
+
 end

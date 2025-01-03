@@ -21,3 +21,13 @@
  (name pretty_print)
  (modules pretty_print)
  )
+
+(library
+ (name code_tree)
+ (modules code_tree)
+ (libraries feature_tree))
+
+(library
+ (name cli_utils)
+ (modules cli_utils)
+ )

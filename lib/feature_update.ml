@@ -19,7 +19,7 @@ module FeatureUpdate = struct
     Printf.sprintf "%s\n" update.title
 
   let string_of_update_verbose update = 
-    Printf.sprintf "%s\n%s\n" update.title update.content
+    Printf.sprintf "Title: %s\n%s\n" update.title update.content
 
   let string_of_updates updates = 
     List.fold_left (fun acc update -> acc ^ "- " ^ update.title ^ "\n") "" updates
