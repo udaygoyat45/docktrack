@@ -43,11 +43,15 @@ let child1 : FeatureTree.m = {
     descr=None;
 }
 
-let _ = code_tree
+let code_tree = code_tree
   |> new_feature_to_ct "feature tree" "auto documentation" child1
   |> new_feature_to_ct "feature update" "auto documentation" child2
   |> new_feature_to_ct "pretty print" "auto documentation" child3
   |> new_feature_to_ct "ds utils" "auto documentation" child4
+
+  |> CodeTree.add_file "test.ml" ({
+    name = "test.ml"; path = "test.ml"; feature_names = StringSet.empty
+    } : CodeTree.file)
 
   |> CodeTree.add_feature "test.ml" "feature tree"
   |> CodeTree.add_feature "test.ml" "feature update"
