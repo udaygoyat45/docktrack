@@ -1,8 +1,11 @@
 (test
- (name test_auto_documentation))
-
-(test
  (name test_feature_tree)
  (libraries feature_tree feature_update cli_utils)
  (modules test_feature_tree)
+ )
+
+(test
+ (name test_code_tree)
+ (modules test_code_tree)
+ (libraries code_tree feature_tree feature_update cli_utils)
  )

@@ -25,7 +25,7 @@
 (library
  (name code_tree)
  (modules code_tree)
- (libraries feature_tree))
+ (libraries cli_utils feature_tree))
 
 (library
  (name cli_utils)

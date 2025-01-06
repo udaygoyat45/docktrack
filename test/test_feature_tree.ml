@@ -42,7 +42,7 @@ let update1 : FeatureUpdate.t = {
 }
 
 let _ = CliUtils.print_header "TESTING FEATURE TREE"
-let feature_tree = FeatureTree.init_project "auto documentation" root_m
+let feature_tree = FeatureTree.empty_feature_tree "auto documentation" root_m
 let feature_tree = 
   FeatureTree.(
     feature_tree 
