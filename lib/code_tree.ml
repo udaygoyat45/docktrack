@@ -21,7 +21,6 @@ module CodeTree = struct
     feature_tree = FeatureTree.empty_feature_tree project_name project_data;
   }
 
-
   let add_file file_name file_data {file_map; feature_tree} = 
     let file = {
       name = file_name;

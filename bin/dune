@@ -8,4 +8,10 @@
    ds_utils
    pretty_print
    code_tree
- ))
+   lwt
+   core core_unix.command_unix
+ )
+ (preprocess 
+  (pps ppx_jane)
+  )
+ )
