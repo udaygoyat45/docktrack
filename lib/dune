@@ -30,4 +30,5 @@
 (library
  (name cli_utils)
  (modules cli_utils)
+ (libraries core core_unix.command_unix)
  )

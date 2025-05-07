@@ -1,13 +1,6 @@
 open Feature_update 
 open Pretty_print
 
-(* 
-Feature Tree Needs To Support 3 Essential Features
-[x] Addition/Deletion of Features
-[x] Chronological Addition of Updates 
-[ ] Addition/Deletion of Targetted Files
-*)
-
 module FeatureTree = struct
   module StringSet = Set.Make (String)
   module StringMap = Map.Make (String)
