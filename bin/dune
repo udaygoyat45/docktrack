@@ -2,16 +2,30 @@
  (public_name auto_documentation)
  (name main)
  (libraries 
+  ; opam libraries 
+   core core_unix.command_unix
+
+  ; local libraries
    auto_documentation
    feature_tree
    feature_update
    ds_utils
    pretty_print
    code_tree
+   cli_utils
    lwt
-   core core_unix.command_unix
  )
  (preprocess 
   (pps ppx_jane)
   )
  )
+
+(env
+ (dev
+  (flags (:standard -warn-error -32
+          :standard -warn-error -27
+          :standard -warn-error -26
+          :standard -warn-error -33 ) 
+  )
+ )
+)
