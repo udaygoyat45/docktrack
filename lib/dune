@@ -5,6 +5,7 @@
 (library
  (name feature_update)
  (modules feature_update)
+ (libraries core)
  )
 
 (library
@@ -15,7 +16,7 @@
 (library
  (name ds_utils)
  (modules ds_utils)
- (libraries pretty_print))
+ (libraries pretty_print core))
 
 (library
  (name pretty_print)
@@ -25,10 +26,16 @@
 (library
  (name code_tree)
  (modules code_tree)
- (libraries cli_utils feature_tree))
+ (libraries cli_utils feature_tree ds_utils))
 
 (library
  (name cli_utils)
  (modules cli_utils)
+ (libraries core core_unix.command_unix)
+ )
+
+(library
+ (name os_utils)
+ (modules os_utils)
  (libraries core core_unix.command_unix)
  )

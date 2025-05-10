@@ -7,14 +7,12 @@ module CliUtils = struct
     Printf.printf "%s\n" header;
     print_dashed_line ()
 
-
   let run_unix cmd = 
     let inp = Core_unix.open_process_in cmd in
     let r = In_channel.input_all inp in
     In_channel.close inp;
     r
 
-  
   let read_input_cmd parse_input_cmd =
     let open Command.Param in
     let wrapped =
@@ -26,7 +24,6 @@ module CliUtils = struct
       ~readme:(fun () -> "This command wraps git commands with docktrack.")
       wrapped
 
-  
   let inline_input ?optional query validator error_msg = 
     let requery () = 
         Printf.printf "%s\n" error_msg;
@@ -46,4 +43,20 @@ module CliUtils = struct
         inline_input' ()
       ) in
     inline_input' ()
+
+    type input_bool = Yes | No
+  
+    let inline_input_bool query =
+      let valid_yes  = Set.of_list (module String) ["Y"; "y"; "yes"; "YES"; ""] in
+      let valid_no   = Set.of_list (module String) ["N"; "n"; "no";  "NO"]  in
+      let rec loop () =
+        Printf.printf "%s [Y/n]: " query;
+        Out_channel.flush stdout;
+        let output = In_channel.input_line_exn In_channel.stdin |> String.strip in
+        if Set.mem valid_yes output then Yes
+        else if Set.mem valid_no output then No
+        else loop ()
+      in
+      loop ()
+
 end 

@@ -1,31 +1,24 @@
-(executable
- (public_name auto_documentation)
- (name main)
- (libraries 
-  ; opam libraries 
-   core core_unix.command_unix
-
-  ; local libraries
-   auto_documentation
-   feature_tree
-   feature_update
-   ds_utils
-   pretty_print
-   code_tree
-   cli_utils
-   lwt
- )
- (preprocess 
-  (pps ppx_jane)
-  )
- )
+;; bin/dune
 
 (env
  (dev
-  (flags (:standard -warn-error -32
-          :standard -warn-error -27
-          :standard -warn-error -26
-          :standard -warn-error -33 ) 
-  )
- )
-)
+  (flags (:standard
+           ;; disable warnings-as-errors for codes 32, 27, 26 and 33
+           -warn-error -32-27-26-33))))
+
+(executables
+ (names        main        advent)
+ (public_names auto_documentation advent)
+ (libraries
+  core
+  core_unix.command_unix
+  auto_documentation
+  feature_tree
+  feature_update
+  ds_utils
+  pretty_print
+  code_tree
+  cli_utils
+  os_utils
+  lwt)
+ (preprocess (pps ppx_jane)))
