@@ -1,5 +1,3 @@
-[@@@warning "-26"]
-
 open Core
 open Cli_utils
 
@@ -88,7 +86,10 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
       let file_data : Code_tree.CodeTree.file =
         { path = n_file_path; name = file_name; feature_names = c_features }
       in
-      code_tree
+      let code_tree' =
+        Code_tree.CodeTree.add_file file_name file_data code_tree
+      in
+      code_tree'
   | "dock_remove_files" :: _ -> code_tree
   | "dock_add_feature" :: _ ->
       let n_ft =
