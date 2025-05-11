@@ -2,10 +2,15 @@ open Ds_utils
 open Core
 
 module CodeTree = struct
-  type sst = (string, String.comparator_witness) Set.t
+  type sst = Set.M(String).t [@@deriving sexp]
+
   type file = { name : string; path : string; feature_names : sst }
-  type smp = (string, file, String.comparator_witness) Map.t
+  [@@deriving sexp]
+
+  type smp = file Map.M(String).t [@@deriving sexp]
+
   type ct = { file_map : smp; feature_tree : Feature_tree.FeatureTree.ft }
+  [@@deriving sexp]
 
   exception DuplicateFile of string
   exception MissingFile of string
@@ -79,4 +84,17 @@ module CodeTree = struct
             SetUtils.string_of_string_set ~sep:',' file.feature_names
           in
           Printf.printf "File: %s\nFeatures: %s\n" file.name feature_names)
+
+  let save_code_tree code_tree () =
+    Os_utils.OSUtils.create_dir ".docktrack" ();
+    let write_path = Filename.concat ".docktrack" "code_tree.sexp" in
+    let sexp = sexp_of_ct code_tree in
+    Out_channel.with_file write_path ~f:(fun oc -> Sexp.output oc sexp)
+
+  let read_code_tree () =
+    Os_utils.OSUtils.create_dir ".docktrack" ();
+    let read_path = Filename.concat ".docktrack" "code_tree.sexp" in
+    let data = In_channel.read_all read_path in
+    let sexp = Sexp.of_string data in
+    ct_of_sexp sexp
 end

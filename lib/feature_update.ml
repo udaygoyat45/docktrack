@@ -1,28 +1,23 @@
-module type FeatureUpdate = sig
-  type t
-  val compare : t -> t -> int
-end
+open Core
 
 module FeatureUpdate = struct
-  type status = Documented | Undocumented
+  type status = Documented | Undocumented [@@deriving sexp]
 
   type t = {
-    title: string;
-    content: string;
-    timestamp: int;
-    status: status;
+    title : string;
+    content : string;
+    timestamp : int;
+    status : status;
   }
+  [@@deriving sexp]
 
   let compare a b = String.compare a.title b.title
+  let string_of_update update = Printf.sprintf "%s\n" update.title
 
-  let string_of_update update = 
-    Printf.sprintf "%s\n" update.title
-
-  let string_of_update_verbose update = 
+  let string_of_update_verbose update =
     Printf.sprintf "Title: %s\n%s\n" update.title update.content
 
-  let string_of_updates updates = 
-    List.fold_left (fun acc update -> acc ^ "- " ^ update.title ^ "\n") "" updates
+  let string_of_updates updates =
+    List.fold_left updates ~init:"" ~f:(fun acc update ->
+        acc ^ "- " ^ update.title ^ "\n")
 end
-
-module FeatureUpdateSet = Set.Make(FeatureUpdate)

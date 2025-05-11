@@ -21,4 +21,4 @@
   cli_utils
   os_utils
   lwt)
- (preprocess (pps ppx_jane)))
+ (preprocess (pps ppx_jane ppx_sexp_conv)))

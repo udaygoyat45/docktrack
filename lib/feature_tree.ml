@@ -1,14 +1,12 @@
 open Core
-open Feature_update
+open Sexplib.Std
 open Pretty_print
 
 module FeatureTree = struct
-  (* module Set = Set.Make (String)
-  module Map = Map.Make (String) *)
+  type sst = Set.M(String).t [@@deriving sexp]
 
-  type 'a ft_map = (string, 'a, String.comparator_witness) Map.t
-  type sst = (string, String.comparator_witness) Set.t
   type m = { title : string; descr : string option; url : string option }
+  [@@deriving sexp]
 
   type t = {
     depth : int;
@@ -16,11 +14,15 @@ module FeatureTree = struct
     name : string;
     parent : string option;
     children : sst;
-    documented_updates : FeatureUpdate.t list;
-    undocumented_updates : FeatureUpdate.t list;
+    documented_updates : Feature_update.FeatureUpdate.t list;
+    undocumented_updates : Feature_update.FeatureUpdate.t list;
   }
+  [@@deriving sexp]
 
-  type ft = { root_name : string; feature_map : t ft_map }
+  type string_map_ft = t Map.M(String).t [@@deriving sexp]
+
+  type ft = { root_name : string; feature_map : string_map_ft }
+  [@@deriving sexp]
 
   exception MissingParentFeature of string
   exception DuplicateFeatureName of string
@@ -42,10 +44,6 @@ module FeatureTree = struct
   let empty_feature_tree project_name metadata =
     let feature = empty_feature_aux project_name None 0 metadata in
     let empty_map = Map.empty (module String) in
-    (* let empty_map = Map.empty in *)
-    (* let empty_set = Set.empty in *)
-    (* let feature_map = Map.add project_name feature empty_map in *)
-    (* let feature_map = Map.add project_name feature empty_map in *)
     let feature_map = Map.add_exn empty_map ~key:project_name ~data:feature in
     { root_name = project_name; feature_map }
 
@@ -115,16 +113,17 @@ module FeatureTree = struct
       feature_name
 
   (* Code for manipulating updates to a feature *)
-  let add_update (update : FeatureUpdate.t) feature_name feature_tree =
+  let add_update (update : Feature_update.FeatureUpdate.t) feature_name
+      feature_tree =
     let feature = get_feature feature_name feature_tree in
     let feature' =
       match update.status with
-      | FeatureUpdate.Documented ->
+      | Feature_update.FeatureUpdate.Documented ->
           {
             feature with
             documented_updates = update :: feature.documented_updates;
           }
-      | FeatureUpdate.Undocumented ->
+      | Feature_update.FeatureUpdate.Undocumented ->
           {
             feature with
             undocumented_updates = update :: feature.undocumented_updates;
@@ -183,12 +182,15 @@ module FeatureTree = struct
     let feature = get_feature feature_name feature_tree in
     Printf.printf "Documented updates (latest to oldest):\n";
     if List.length feature.documented_updates > 0 then
-      print_string (FeatureUpdate.string_of_updates feature.documented_updates)
+      print_string
+        (Feature_update.FeatureUpdate.string_of_updates
+           feature.documented_updates)
     else Printf.printf "** No documented updates **\n";
     Printf.printf "Undocumented updates (latest to oldest):\n";
     if List.length feature.undocumented_updates > 0 then
       print_string
-        (FeatureUpdate.string_of_updates feature.undocumented_updates)
+        (Feature_update.FeatureUpdate.string_of_updates
+           feature.undocumented_updates)
     else Printf.printf "** No undocumented updates **\n"
 
   let print_feature feature_name feature_tree =
@@ -201,4 +203,18 @@ module FeatureTree = struct
       (Set.fold feature.children ~init:"" ~f:(fun child acc ->
            acc ^ child ^ ", "));
     print_updates feature_name feature_tree
+
+  let save_feature_tree feature_tree () =
+    Os_utils.OSUtils.create_dir ".docktrack" ();
+    let write_path = Filename.concat ".docktrack" "feature_tree.sexp" in
+    let sexp = sexp_of_ft feature_tree in
+    Out_channel.with_file write_path ~f:(fun oc ->
+        Sexp.to_string_hum sexp |> Out_channel.output_string oc)
+
+  let read_feature_tree () =
+    Os_utils.OSUtils.create_dir ".docktrack" ();
+    let read_path = Filename.concat ".docktrack" "feature_tree.sexp" in
+    let data = In_channel.read_all read_path in
+    let sexp = Sexp.of_string data in
+    ft_of_sexp sexp
 end
