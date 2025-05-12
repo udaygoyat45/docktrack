@@ -1,6 +1,7 @@
 open Core
 
 module CliUtils = struct
+  type input_bool = Yes | No
   let print_dashed_line =
    fun () -> Printf.printf "-----------------------------------\n"
 
@@ -26,6 +27,25 @@ module CliUtils = struct
       ~readme:(fun () -> "This command wraps git commands with docktrack.")
       wrapped
 
+
+  let trim_string str = 
+    let rec trim_string' str in_quote = 
+      if String.is_empty str then str
+      else (
+        let fl = String.get str 0 in
+        let ll = String.get str (String.length str - 1) in
+        if Char.equal fl ' ' then
+          trim_string' (String.sub str ~pos:1 ~len:(String.length str - 1)) in_quote
+        else if Char.equal ll ' ' then
+          trim_string' (String.sub str ~pos:0 ~len:(String.length str - 1)) in_quote
+        else if not in_quote && String.length str > 2 && Char.equal fl '"' && Char.equal ll '"' then
+          trim_string' (String.sub str ~pos:1 ~len:(String.length str - 2)) in_quote
+        else
+          str
+      )
+        in trim_string' str false
+
+
   let inline_input ?optional query validator error_msg =
     let requery () =
       Printf.printf "%s\n" error_msg;
@@ -47,9 +67,9 @@ module CliUtils = struct
         requery ();
         inline_input' ())
     in
-    inline_input' ()
+    let raw_input = inline_input' () in
+    trim_string raw_input
 
-  type input_bool = Yes | No
 
   let inline_input_bool query =
     let valid_yes =
