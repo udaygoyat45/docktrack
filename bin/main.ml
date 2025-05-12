@@ -42,6 +42,12 @@ let valid_docktrack_cmd parsed_cmd =
       "dock_view_code_tree";
       "dock_view_features";
       "dock_view_feature";
+      "dock_add_update";
+      "dock_view_updates";
+      "dock_view_update";
+      "dock_document_next_update";
+      "dock_document_update";
+      "dock_remove_update";
     ]
   in
   match parsed_cmd with
@@ -61,7 +67,7 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
   | [ "dock_view_feature"; ft_name ] ->
       Feature_tree.FeatureTree.print_feature ft_name ft;
       code_tree
-  | "dock_add_file" :: _ ->
+  | [ "dock_add_file" ] ->
       let n_file_path =
         CliUtils.inline_input "File Path"
           (fun path -> Os_utils.OSUtils.validate_file_path path ())
@@ -86,12 +92,22 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
       let file_data : Code_tree.CodeTree.file =
         { path = n_file_path; name = file_name; feature_names = c_features }
       in
+
       let code_tree' =
-        Code_tree.CodeTree.add_file file_name file_data code_tree
+        try Code_tree.CodeTree.add_file file_name file_data code_tree with
+        | Code_tree.CodeTree.DuplicateFile name ->
+            Printf.eprintf "Docktrack: File %s already exists in the code tree"
+              name;
+            code_tree
+        | Code_tree.CodeTree.MissingFile path ->
+            Printf.eprintf
+              "Docktrack: Invalid file path %s. Please provide a valid path"
+              path;
+            code_tree
       in
       code_tree'
-  | "dock_remove_files" :: _ -> code_tree
-  | "dock_add_feature" :: _ ->
+  | [ "dock_remove_files" ] -> code_tree
+  | [ "dock_add_feature" ] ->
       let n_ft =
         CliUtils.inline_input "Feature"
           (fun x -> String.length x > 0)
@@ -113,9 +129,9 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
           "Feature description should be more than 10 characters"
       in
       let n_url =
-        CliUtils.inline_input ~optional:"" "Feature URL"
-          (fun _ -> true)
-          "Feature URL cannot be empty"
+        CliUtils.inline_input ~optional:"" "Feature URL (optional)"
+          (fun x -> String.length x = 0 || Ds_utils.is_valid_http_url x)
+          "Please provide a valid http(s) URL"
       in
       CliUtils.print_header "Feature Metadata";
       printf "feature: %s, parent: %s, metadata: %s; %s; %s\n" n_ft n_pft
@@ -127,11 +143,149 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
           url = (if String.length n_url = 0 then Some n_url else None);
         }
       in
-      let ft' = Feature_tree.FeatureTree.add_feature n_ft n_pft n_metadata ft in
+      let ft' =
+        try Feature_tree.FeatureTree.add_feature n_ft n_pft n_metadata ft with
+        | Feature_tree.FeatureTree.MissingParentFeature name ->
+            Printf.eprintf
+              "Docktrack: No such feature (parent) %s in the feature tree" name;
+            ft
+        | Feature_tree.FeatureTree.DuplicateFeatureName name ->
+            Printf.eprintf
+              "Docktrack: Feature %s already exists in the feature tree" name;
+            ft
+      in
       { code_tree with feature_tree = ft' }
   | "dock_remove_feature" :: ft_name ->
       let ft_name' = String.concat ~sep:" " ft_name in
-      let ft' = Feature_tree.FeatureTree.remove_feature ft_name' ft in
+      let ft' =
+        try Feature_tree.FeatureTree.remove_feature ft_name' ft
+        with Feature_tree.FeatureTree.DeletingProjectRoot msg ->
+          Printf.eprintf "Docktrack: Cannot delete the project root feature %s"
+            msg;
+          ft
+      in
+      { code_tree with feature_tree = ft' }
+  | [ "dock_add_update" ] ->
+      let feature_name =
+        CliUtils.inline_input "Feature"
+          (fun feature -> Feature_tree.FeatureTree.feature_exists feature ft)
+          "Please provide a valid feature name. Use 'dock_view_features' to \
+           view the feature tree"
+      in
+      let update_title =
+        CliUtils.inline_input "Update title"
+          (fun title -> String.length title > 0)
+          "Update title cannot be empty"
+      in
+      let update_content =
+        CliUtils.inline_input "Update content"
+          (fun content -> String.length content > 0)
+          "Update content cannot be empty"
+      in
+      let timestamp = Core_unix.gettimeofday () in
+      let update =
+        {
+          Feature_update.FeatureUpdate.title = update_title;
+          content = update_content;
+          timestamp = int_of_float timestamp;
+          status = Feature_update.FeatureUpdate.Undocumented;
+        }
+      in
+      let ft' =
+        try Feature_tree.FeatureTree.add_update update feature_name ft
+        with Feature_tree.FeatureTree.MissingFeature name ->
+          Printf.eprintf "Docktrack: No such feature %s in the feature tree"
+            name;
+          ft
+      in
+      { code_tree with feature_tree = ft' }
+  | [ "dock_view_updates"; ft_name ] ->
+      if Feature_tree.FeatureTree.feature_exists ft_name ft then
+        Feature_tree.FeatureTree.print_updates ft_name ft
+      else
+        Printf.eprintf "Docktrack: No such feature %s in the feature tree"
+          ft_name;
+      code_tree
+  | [ "dock_view_update"; ft_name; update_name ] ->
+      let update_str =
+        try
+          Feature_tree.FeatureTree.string_of_update ft_name update_name ft
+        with
+        | Feature_tree.FeatureTree.MissingUpdate (name, update_name) ->
+            Printf.sprintf "Docktrack: No such update %s in the feature %s\n"
+              update_name name
+        | Feature_tree.FeatureTree.MissingFeature name ->
+            Printf.sprintf "Docktrack: No such feature %s in the feature tree"
+              name
+      in
+      print_endline update_str;
+      code_tree
+  | [ "dock_document_next_update"; ft_name ] ->
+      let ft' =
+        try
+          let ft'' = Feature_tree.FeatureTree.document_next_update ft_name ft in
+          (* now pass ft'' into newest_documented_update *)
+          let upd =
+            match
+              Feature_tree.FeatureTree.newest_documented_update ft_name ft''
+            with
+            | Some u -> u
+            | None -> failwith "No documented updates available"
+          in
+          Printf.eprintf "Docktrack: Documented feature %s\n"
+            (Feature_update.FeatureUpdate.string_of_update upd);
+          ft''
+        with
+        | Feature_tree.FeatureTree.MissingFeature name ->
+            Printf.eprintf "Docktrack: No such feature %s in the feature tree\n"
+              name;
+            ft
+        | Feature_tree.FeatureTree.EmptyUndocumentedUpdates ->
+            Printf.eprintf
+              "Docktrack: No undocumented updates available for feature %s\n"
+              ft_name;
+            ft
+      in
+      { code_tree with feature_tree = ft' }
+  | [ "dock_document_update"; ft_name; update_name ] ->
+      let ft' =
+        try
+          let ft'' =
+            Feature_tree.FeatureTree.document_update ft_name update_name ft
+          in
+          Printf.eprintf "Docktrack: Documented update: %s\n"
+            (Feature_tree.FeatureTree.string_of_update ft_name update_name ft);
+          ft''
+        with
+        | Feature_tree.FeatureTree.MissingFeature name ->
+            Printf.eprintf "Docktrack: No such feature %s in the feature tree\n"
+              name;
+            ft
+        | Feature_tree.FeatureTree.MissingUpdate (name, update_name) ->
+            Printf.eprintf "Docktrack: No such update %s in the feature %s\n"
+              update_name name;
+            ft
+      in
+      { code_tree with feature_tree = ft' }
+  | [ "dock_remove_update"; ft_name; update_name ] ->
+      let ft' =
+        try
+          let ft'' =
+            Feature_tree.FeatureTree.remove_update ft_name update_name ft
+          in
+          Printf.eprintf "Docktrack: Removed update %s\n"
+            (Feature_tree.FeatureTree.string_of_update ft_name update_name ft);
+          ft''
+        with
+        | Feature_tree.FeatureTree.MissingFeature name ->
+            Printf.eprintf "Docktrack: No such feature %s in the feature tree\n"
+              name;
+            ft
+        | Feature_tree.FeatureTree.MissingUpdate (name, update_name) ->
+            Printf.eprintf "Docktrack: No such update %s in the feature %s\n"
+              update_name name;
+            ft
+      in
       { code_tree with feature_tree = ft' }
   | _ ->
       print_endline
@@ -178,25 +332,5 @@ let _ =
     Code_tree.CodeTree.save_code_tree new_tree ()
   in
 
-  (* handler [ "dock_add_feature" ];
-  handler [ "dock_add_feature" ];
-  handler [ "dock_add_file" ]; *)
-
-  (* Feature_tree.FeatureTree.save_feature_tree !ref_code_tree.feature_tree () *)
-
   (* Input from the CLI args - similar to what the final product would do *)
   Command_unix.run (CliUtils.read_input_cmd handler)
-
-(* handler ["dock_add_feature"];
-  handler ["dock_view_features"];
-  handler ["dock_view_code_tree"]; *)
-
-(* handler ["dock_view_feature"; "something"]; *)
-(* handler ["dock_remove_feature"; "something"];
-  handler ["dock_view_features"];
-  handler ["dock_view_feature"; "something"] *)
-
-(* let ans : CliUtils.input_bool = CliUtils.inline_input_bool ("Is this testing working?") in 
-  match ans  with
-  | Yes -> print_endline "Yes recorded"
-  | No -> print_endline "No recorded" *)

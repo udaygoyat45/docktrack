@@ -15,3 +15,10 @@ module SetUtils = struct
 end
 
 let bind_exn opt exn = match opt with Some x -> x | None -> raise exn
+
+let is_valid_http_url (s : string) : bool =
+  match try Some (Uri.of_string s) with _ -> None with
+  | None -> false
+  | Some uri ->
+      (match Uri.scheme uri with Some ("http" | "https") -> true | _ -> false)
+      && Option.is_some (Uri.host uri)
