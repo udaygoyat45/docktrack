@@ -28,6 +28,8 @@ module FeatureTree = struct
   exception DuplicateFeatureName of string
   exception DeletingProjectRoot of string
   exception MissingFeature of string
+  exception MissingUpdate of string * string
+  exception DuplicateUpdate of string * string
   exception EmptyUndocumentedUpdates
 
   let empty_feature_aux name parent_name depth metadata =
@@ -78,6 +80,9 @@ module FeatureTree = struct
     match Map.find feature_map name with
     | None -> raise (MissingFeature name)
     | Some feature -> feature
+
+  let feature_exists name { feature_map; _ } =
+    match Map.find feature_map name with None -> false | Some _ -> true
 
   let rec remove_feature_aux feature_tree feature_name =
     let feature = get_feature feature_name feature_tree in
@@ -134,6 +139,26 @@ module FeatureTree = struct
     in
     { feature_map = feature_map'; root_name = feature_tree.root_name }
 
+  let string_of_update feature_name update_name feature_tree =
+    let feature = get_feature feature_name feature_tree in
+    let documented =
+      List.find feature.documented_updates ~f:(fun u ->
+          String.equal u.title update_name)
+    in
+    let undocumented =
+      List.find feature.undocumented_updates ~f:(fun u ->
+          String.equal u.title update_name)
+    in
+    match (documented, undocumented) with
+    | Some _, Some _ -> raise (DuplicateUpdate (feature_name, update_name))
+    | Some update, None ->
+        Feature_update.FeatureUpdate.string_of_update_verbose update
+    | None, Some update ->
+        Feature_update.FeatureUpdate.string_of_update_verbose update
+    | None, None -> raise (MissingUpdate (feature_name, update_name))
+
+  (* Get the oldest undocumented and newest documented updates *)
+
   let oldest_undocumented_update feature_name feature_tree =
     let feature = get_feature feature_name feature_tree in
     List.hd feature.undocumented_updates
@@ -160,6 +185,77 @@ module FeatureTree = struct
               feature')
         in
         { feature_map = feature_map'; root_name = feature_tree.root_name }
+
+  let get_update feature_name update_name feature_tree =
+    let feature = get_feature feature_name feature_tree in
+    let documented_update =
+      List.find feature.documented_updates ~f:(fun u ->
+          String.equal u.title update_name)
+    in
+    let undocumented_update =
+      List.find feature.undocumented_updates ~f:(fun u ->
+          String.equal u.title update_name)
+    in
+    match (documented_update, undocumented_update) with
+    | Some update, None -> (update, Feature_update.FeatureUpdate.Documented)
+    | None, Some update -> (update, Feature_update.FeatureUpdate.Undocumented)
+    | Some _, Some _ -> raise (DuplicateUpdate (feature_name, update_name))
+    | None, None -> raise (MissingUpdate (feature_name, update_name))
+
+  (* Document an undocumented update *)
+
+  let document_update feature_name update_name feature_tree =
+    let feature = get_feature feature_name feature_tree in
+    let update =
+      List.find feature.undocumented_updates ~f:(fun u ->
+          String.equal u.title update_name)
+    in
+    match update with
+    | None -> raise (MissingUpdate (feature_name, update_name))
+    | Some update ->
+        let documented_updates' = update :: feature.documented_updates in
+        let undocumented_updates' =
+          List.filter feature.undocumented_updates ~f:(fun u ->
+              not (String.equal u.title update_name))
+        in
+        let feature' =
+          {
+            feature with
+            undocumented_updates = undocumented_updates';
+            documented_updates = documented_updates';
+          }
+        in
+        let feature_map' =
+          Map.update feature_tree.feature_map feature_name ~f:(fun _ ->
+              feature')
+        in
+        { feature_map = feature_map'; root_name = feature_tree.root_name }
+
+  let remove_update feature_name update_name feature_tree =
+    let feature = get_feature feature_name feature_tree in
+    let _, update_status =
+      get_update feature_name update_name feature_tree
+    in
+    let feature' =
+      match update_status with
+      | Feature_update.FeatureUpdate.Documented ->
+          let documented_updates' =
+            List.filter feature.documented_updates ~f:(fun u ->
+                not (String.equal u.title update_name))
+          in
+          { feature with documented_updates = documented_updates' }
+      | Feature_update.FeatureUpdate.Undocumented ->
+          let undocumented_updates' =
+            List.filter feature.undocumented_updates ~f:(fun u ->
+                not (String.equal u.title update_name))
+          in
+          { feature with undocumented_updates = undocumented_updates' }
+    in
+
+    let feature_map' =
+      Map.update feature_tree.feature_map feature_name ~f:(fun _ -> feature')
+    in
+    { feature_map = feature_map'; root_name = feature_tree.root_name }
 
   let string_of_feature feature =
     if feature.depth = 0 then feature.name

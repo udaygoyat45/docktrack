@@ -19,7 +19,7 @@
 (library
  (name ds_utils)
  (modules ds_utils)
- (libraries pretty_print core))
+ (libraries pretty_print core uri))
 
 (library
  (name pretty_print)
