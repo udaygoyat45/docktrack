@@ -1,5 +1,4 @@
 open Core
-open Cli_utils
 
 type cmd_parsed_type = GitCommand | DocktrackCommand | InvalidCommand
 
@@ -69,15 +68,15 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
       code_tree
   | [ "dock_add_file" ] ->
       let n_file_path =
-        CliUtils.inline_input "File Path"
+        Cli_utils.CliUtils.inline_input "File Path"
           (fun path -> Os_utils.OSUtils.validate_file_path path ())
           "Please provide an accurate path from the root of the project dir"
       in
       let rec add_features features () =
-        match CliUtils.inline_input_bool "Add feature to file?" with
+        match Cli_utils.CliUtils.inline_input_bool "Add feature to file?" with
         | Yes ->
             let n_ft_name =
-              CliUtils.inline_input "Feature name"
+              Cli_utils.CliUtils.inline_input "Feature name"
                 (Code_tree.CodeTree.feature_exists code_tree)
                 "No such feature exists within the feature tree. Use \
                  'dock_add_feature' to add a feature"
@@ -109,31 +108,31 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
   | [ "dock_remove_files" ] -> code_tree
   | [ "dock_add_feature" ] ->
       let n_ft =
-        CliUtils.inline_input "Feature"
+        Cli_utils.CliUtils.inline_input "Feature"
           (fun x -> String.length x > 0)
           "Feature name cannot be empty"
       in
       let n_pft =
-        CliUtils.inline_input ~optional:ft.root_name "Parent (optional)"
+        Cli_utils.CliUtils.inline_input ~optional:ft.root_name "Parent (optional)"
           (fun _ -> true)
           "Parent feature name cannot be empty"
       in
       let n_title =
-        CliUtils.inline_input "Feature title"
+        Cli_utils.CliUtils.inline_input "Feature title"
           (fun x -> String.length x > 0)
           "Feature title cannot be empty"
       in
       let n_descr =
-        CliUtils.inline_input ~optional:"" "Feature description (optional)"
+        Cli_utils.CliUtils.inline_input ~optional:"" "Feature description (optional)"
           (fun x -> String.length x > 10)
           "Feature description should be more than 10 characters"
       in
       let n_url =
-        CliUtils.inline_input ~optional:"" "Feature URL (optional)"
+        Cli_utils.CliUtils.inline_input ~optional:"" "Feature URL (optional)"
           (fun x -> String.length x = 0 || Ds_utils.is_valid_http_url x)
           "Please provide a valid http(s) URL"
       in
-      CliUtils.print_header "Feature Metadata";
+      Cli_utils.CliUtils.print_header "Feature Metadata";
       printf "feature: %s, parent: %s, metadata: %s; %s; %s\n" n_ft n_pft
         n_title n_descr n_url;
       let n_metadata : Feature_tree.FeatureTree.m =
@@ -167,18 +166,18 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
       { code_tree with feature_tree = ft' }
   | [ "dock_add_update" ] ->
       let feature_name =
-        CliUtils.inline_input "Feature"
+        Cli_utils.CliUtils.inline_input "Feature"
           (fun feature -> Feature_tree.FeatureTree.feature_exists feature ft)
           "Please provide a valid feature name. Use 'dock_view_features' to \
            view the feature tree"
       in
       let update_title =
-        CliUtils.inline_input "Update title"
+        Cli_utils.CliUtils.inline_input "Update title"
           (fun title -> String.length title > 0)
           "Update title cannot be empty"
       in
       let update_content =
-        CliUtils.inline_input "Update content"
+        Cli_utils.CliUtils.inline_input "Update content"
           (fun content -> String.length content > 0)
           "Update content cannot be empty"
       in
@@ -303,12 +302,12 @@ let simulate_command_shell cmd code_tree =
   match parsed_output with
   | GitCommand ->
       let shell_git_cmd = "git " ^ cmd in
-      let git_output = CliUtils.run_unix shell_git_cmd in
-      CliUtils.print_header "Git";
+      let git_output = Cli_utils.CliUtils.run_unix shell_git_cmd in
+      Cli_utils.CliUtils.print_header "Git";
       print_endline git_output;
       code_tree
   | DocktrackCommand ->
-      CliUtils.print_header "Docktrack";
+      Cli_utils.CliUtils.print_header "Docktrack";
       parse_docktrack_cmd cmd code_tree
   | InvalidCommand ->
       print_endline
@@ -333,4 +332,4 @@ let _ =
   in
 
   (* Input from the CLI args - similar to what the final product would do *)
-  Command_unix.run (CliUtils.read_input_cmd handler)
+  Command_unix.run (Cli_utils.CliUtils.read_input_cmd handler)
