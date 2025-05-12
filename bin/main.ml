@@ -1,5 +1,3 @@
-[@@@warning "-26"]
-
 open Core
 open Cli_utils
 
@@ -88,7 +86,10 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
       let file_data : Code_tree.CodeTree.file =
         { path = n_file_path; name = file_name; feature_names = c_features }
       in
-      code_tree
+      let code_tree' =
+        Code_tree.CodeTree.add_file file_name file_data code_tree
+      in
+      code_tree'
   | "dock_remove_files" :: _ -> code_tree
   | "dock_add_feature" :: _ ->
       let n_ft =
@@ -161,24 +162,30 @@ let simulate_command_shell cmd code_tree =
       code_tree
 
 let _ =
-  let ref_code_tree =
-    ref
-      (Code_tree.CodeTree.empty_ct "docktrack"
-         { title = "root"; descr = None; url = None })
+  let read_code_tree =
+    if Os_utils.OSUtils.validate_file_path Os_utils.OSUtils.code_tree_path ()
+    then Code_tree.CodeTree.read_code_tree ()
+    else
+      Code_tree.CodeTree.empty_ct "docktrack"
+        { title = "root"; descr = None; url = None }
   in
+  let ref_code_tree = ref read_code_tree in
   let handler words =
     let full_cmd = String.concat ~sep:" " words in
     let old_tree = !ref_code_tree in
     let new_tree = simulate_command_shell full_cmd old_tree in
-    ref_code_tree := new_tree
+    ref_code_tree := new_tree;
+    Code_tree.CodeTree.save_code_tree new_tree ()
   in
 
+  (* handler [ "dock_add_feature" ];
   handler [ "dock_add_feature" ];
-  handler [ "dock_add_feature" ];
-  handler [ "dock_add_file" ]
+  handler [ "dock_add_file" ]; *)
 
-(* Input from the CLI args - similar to what the final product would do *)
-(* Command_unix.run (CliUtils.read_input_cmd handler) *)
+  (* Feature_tree.FeatureTree.save_feature_tree !ref_code_tree.feature_tree () *)
+
+  (* Input from the CLI args - similar to what the final product would do *)
+  Command_unix.run (CliUtils.read_input_cmd handler)
 
 (* handler ["dock_add_feature"];
   handler ["dock_view_features"];

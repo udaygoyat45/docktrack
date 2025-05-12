@@ -5,13 +5,16 @@
 (library
  (name feature_update)
  (modules feature_update)
- (libraries core)
+ (libraries core os_utils)
+ (preprocess (pps ppx_jane))
  )
 
 (library
  (name feature_tree)
  (modules feature_tree)
- (libraries feature_update ds_utils))
+ (libraries feature_update ds_utils core)
+ (preprocess (pps ppx_jane))
+ )
 
 (library
  (name ds_utils)
@@ -26,7 +29,9 @@
 (library
  (name code_tree)
  (modules code_tree)
- (libraries cli_utils feature_tree ds_utils))
+ (libraries cli_utils feature_tree ds_utils)
+ (preprocess (pps ppx_jane))
+ )
 
 (library
  (name cli_utils)

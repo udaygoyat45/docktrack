@@ -1,4 +1,4 @@
-### DocTrack
+### DockTrack
 
 - A plugin that can be added on top of github
 - Ensures that documenation is up-to-date
