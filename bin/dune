@@ -12,6 +12,7 @@
  (libraries
   core
   core_unix.command_unix
+
   auto_documentation
   feature_tree
   feature_update
@@ -20,5 +21,6 @@
   code_tree
   cli_utils
   os_utils
-  lwt)
+  lwt
+  )
  (preprocess (pps ppx_jane ppx_sexp_conv)))
