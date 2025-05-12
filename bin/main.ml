@@ -54,9 +54,8 @@ let valid_docktrack_cmd parsed_cmd =
   | first :: _ -> List.mem docktrack_subcmds first ~equal:String.equal
 
 let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
-  let split_cmd = String.split ~on:' ' cmd in
   let ft = code_tree.feature_tree in
-  match split_cmd with
+  match cmd with
   | [ "dock_view_code_tree" ] ->
       Code_tree.CodeTree.print_code_tree code_tree;
       code_tree
@@ -113,7 +112,8 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
           "Feature name cannot be empty"
       in
       let n_pft =
-        Cli_utils.CliUtils.inline_input ~optional:ft.root_name "Parent (optional)"
+        Cli_utils.CliUtils.inline_input ~optional:ft.root_name
+          "Parent (optional)"
           (fun _ -> true)
           "Parent feature name cannot be empty"
       in
@@ -123,7 +123,8 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
           "Feature title cannot be empty"
       in
       let n_descr =
-        Cli_utils.CliUtils.inline_input ~optional:"" "Feature description (optional)"
+        Cli_utils.CliUtils.inline_input ~optional:""
+          "Feature description (optional)"
           (fun x -> String.length x > 10)
           "Feature description should be more than 10 characters"
       in
@@ -292,16 +293,15 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
       code_tree
 
 let parse_cmd cmd =
-  let split_cmd = String.split ~on:' ' cmd in
-  if valid_git_subcmd split_cmd then GitCommand
-  else if valid_docktrack_cmd split_cmd then DocktrackCommand
+  if valid_git_subcmd cmd then GitCommand
+  else if valid_docktrack_cmd cmd then DocktrackCommand
   else InvalidCommand
 
 let simulate_command_shell cmd code_tree =
   let parsed_output = parse_cmd cmd in
   match parsed_output with
   | GitCommand ->
-      let shell_git_cmd = "git " ^ cmd in
+      let shell_git_cmd = String.concat ~sep:" " ("git" :: cmd) in
       let git_output = Cli_utils.CliUtils.run_unix shell_git_cmd in
       Cli_utils.CliUtils.print_header "Git";
       print_endline git_output;
@@ -323,10 +323,9 @@ let _ =
         { title = "root"; descr = None; url = None }
   in
   let ref_code_tree = ref read_code_tree in
-  let handler words =
-    let full_cmd = String.concat ~sep:" " words in
+  let handler cmd =
     let old_tree = !ref_code_tree in
-    let new_tree = simulate_command_shell full_cmd old_tree in
+    let new_tree = simulate_command_shell cmd old_tree in
     ref_code_tree := new_tree;
     Code_tree.CodeTree.save_code_tree new_tree ()
   in
