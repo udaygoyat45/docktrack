@@ -82,7 +82,8 @@ module CodeTree = struct
           let feature_names =
             Ds_utils.SetUtils.string_of_string_set ~sep:',' file.feature_names
           in
-          Printf.printf "File: %s\nFeatures: %s\n" file.name feature_names)
+          let trimmed_path = Os_utils.OSUtils.concat_path file.path 5 in
+          Printf.printf "File: %s\nFeatures: %s\n" trimmed_path feature_names)
 
   let save_code_tree code_tree () =
     Os_utils.OSUtils.create_dir ".docktrack" ();
