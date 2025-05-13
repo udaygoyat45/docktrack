@@ -21,22 +21,22 @@ module CodeTree = struct
         Feature_tree.FeatureTree.empty_feature_tree project_name project_data;
     }
 
-  let add_file file_name file_data { file_map; feature_tree } =
+  let add_file file_data { file_map; feature_tree } =
     let file =
       {
-        name = file_name;
+        name = file_data.name;
         path = file_data.path;
         feature_names = Set.empty (module String);
       }
     in
-    let file_map' = Map.add file_map ~key:file_name ~data:file in
+    let file_map' = Map.add file_map ~key:file_data.path ~data:file in
     match file_map' with
     | `Ok map -> { file_map = map; feature_tree }
-    | `Duplicate -> raise (DuplicateFile file_name)
+    | `Duplicate -> raise (DuplicateFile file_data.name)
 
-  let update_file file_name new_file_data { file_map; _ } =
-    let a = Map.remove file_map file_name in
-    Map.add a ~key:file_name ~data:new_file_data
+  let update_file new_file_data { file_map; _ } =
+    let a = Map.remove file_map new_file_data.path in
+    Map.add a ~key:new_file_data.path ~data:new_file_data
 
   let add_feature file_name feature_name { file_map; feature_tree } =
     let file =
@@ -82,7 +82,8 @@ module CodeTree = struct
           let feature_names =
             Ds_utils.SetUtils.string_of_string_set ~sep:',' file.feature_names
           in
-          Printf.printf "File: %s\nFeatures: %s\n" file.name feature_names)
+          let trimmed_path = Os_utils.OSUtils.concat_path file.path 5 in
+          Printf.printf "File: %s\nFeatures: %s\n" trimmed_path feature_names)
 
   let save_code_tree code_tree () =
     Os_utils.OSUtils.create_dir ".docktrack" ();

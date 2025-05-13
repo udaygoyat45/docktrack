@@ -92,7 +92,7 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
       in
 
       let code_tree' =
-        try Code_tree.CodeTree.add_file file_name file_data code_tree with
+        try Code_tree.CodeTree.add_file file_data code_tree with
         | Code_tree.CodeTree.DuplicateFile name ->
             Printf.eprintf "Docktrack: File %s already exists in the code tree"
               name;
@@ -218,7 +218,7 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
             Printf.sprintf "Docktrack: No such feature %s in the feature tree"
               name
       in
-      print_endline update_str;
+      Printf.eprintf "%s\n" update_str;
       code_tree
   | [ "dock_document_next_update"; ft_name ] ->
       let ft' =
@@ -288,7 +288,7 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
       in
       { code_tree with feature_tree = ft' }
   | _ ->
-      print_endline
+      Printf.eprintf "%s\n"
         "Docktrack: Invalid command. Please use a valid docktrack command.";
       code_tree
 
@@ -304,14 +304,14 @@ let simulate_command_shell cmd code_tree =
       let shell_git_cmd = String.concat ~sep:" " ("git" :: cmd) in
       let git_output = Cli_utils.CliUtils.run_unix shell_git_cmd in
       Cli_utils.CliUtils.print_header "Git";
-      print_endline git_output;
+      Printf.eprintf "%s\n" git_output;
       Cli_utils.CliUtils.print_header "Post-Git";
       Code_tree.CodeTree.validate_code_tree code_tree ()
   | DocktrackCommand ->
       Cli_utils.CliUtils.print_header "Docktrack";
       parse_docktrack_cmd cmd code_tree
   | InvalidCommand ->
-      print_endline
+      Printf.eprintf "%s\n"
         "Invalid command. Please use a valid git or docktrack command.";
       code_tree
 

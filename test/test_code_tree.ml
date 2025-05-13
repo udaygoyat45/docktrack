@@ -40,7 +40,7 @@ let code_tree =
   |> new_feature_to_ct "feature update" "auto documentation" child2
   |> new_feature_to_ct "pretty print" "auto documentation" child3
   |> new_feature_to_ct "ds utils" "auto documentation" child4
-  |> CodeTree.add_file "test.ml"
+  |> CodeTree.add_file
        ({
           name = "test.ml";
           path = "test.ml";
