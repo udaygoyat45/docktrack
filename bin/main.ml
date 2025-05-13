@@ -115,16 +115,18 @@ let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
             ft
       in
       { code_tree with feature_tree = ft' }
-  | "remove-feature" :: ft_name ->
-      let ft_name' = String.concat ~sep:" " ft_name in
-      let ft' =
-        try Feature_tree.FeatureTree.remove_feature ft_name' ft
-        with Feature_tree.FeatureTree.DeletingProjectRoot msg ->
-          Printf.printf "Docktrack: Cannot delete the project root feature %s"
-            msg;
-          ft
+  | [ "remove-feature"; ft_name ] ->
+      let code_tree' =
+        try Code_tree.CodeTree.remove_feature ft_name code_tree with
+        | Feature_tree.FeatureTree.DeletingProjectRoot msg ->
+            Printf.printf "Docktrack: Cannot delete the project root feature %s"
+              msg;
+            code_tree
+        | Feature_tree.FeatureTree.MissingFeature _ ->
+            Printf.printf "No such feature with name %s exists\n" ft_name;
+            code_tree
       in
-      { code_tree with feature_tree = ft' }
+      code_tree'
   | [ "add-update" ] ->
       let feature_name =
         Cli_utils.CliUtils.inline_input "Feature"
