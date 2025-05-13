@@ -17,16 +17,82 @@ module CliUtils = struct
     In_channel.close inp;
     r
 
-  let read_input_cmd parse_input_cmd =
+  let git_subcmds =
+    [
+      "init";
+      "clone";
+      "status";
+      "add";
+      "commit";
+      "push";
+      "pull";
+      "fetch";
+      "branch";
+      "checkout";
+      "merge";
+      "rebase";
+      "log";
+      "diff";
+      "reset";
+      "revert";
+      "tag";
+      "stash";
+      "remote";
+      "show";
+    ]
+
+  let docktrack_subcmds =
+    [
+      "add-feature";
+      "remove-feature";
+      "add-file";
+      "remove-files";
+      "view-code-tree";
+      "view-features";
+      "view-feature";
+      "add-update";
+      "view-updates";
+      "view-update";
+      "document-next-update";
+      "document-update";
+      "remove-update";
+    ]
+
+  let create_basic_command summary handler =
     let open Command.Param in
     let wrapped =
       map
         (anon (sequence ("cmd" %: string)))
-        ~f:(fun cmd -> fun () -> parse_input_cmd cmd)
+        ~f:(fun cmd -> fun () -> handler cmd)
     in
-    Command.basic ~summary:"Wrapping git commands with docktrack"
-      ~readme:(fun () -> "This command wraps git commands with docktrack.")
-      wrapped
+    Command.basic ~summary wrapped
+
+  let create_group cmd summary handler valid_cmds =
+    let rec create_git_commands' cmds =
+      match cmds with
+      | hd :: rest ->
+          let rest_cmds = create_git_commands' rest in
+          let c_cmd =
+            (hd, create_basic_command (cmd ^ " " ^ hd) (handler hd))
+          in
+          c_cmd :: rest_cmds
+      | [] -> []
+    in
+    let cmd_grp = create_git_commands' valid_cmds in
+    Command.group ~summary cmd_grp
+
+  let git_docktrack_combined summary git_handler docktrack_handler =
+    let git_group =
+      create_group "git"
+        "Docktrack has custom commands accesed through git subcmd" git_handler
+        git_subcmds
+    in
+    let docktrack_group =
+      create_group "docktrack"
+        "Docktrack has custom commands accesed through dock subcmd"
+        docktrack_handler docktrack_subcmds
+    in
+    Command.group ~summary [ ("git", git_group); ("dock", docktrack_group) ]
 
   let trim_string str =
     let rec trim_string' str in_quote =

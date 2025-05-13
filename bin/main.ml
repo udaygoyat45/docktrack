@@ -1,71 +1,20 @@
 open Core
 
-type cmd_parsed_type = GitCommand | DocktrackCommand | InvalidCommand
+type cmd_parsed_type = GitCommand | DocktrackCommand
 
-let valid_git_subcmd parsed_cmd =
-  let supported_git_cmds =
-    [
-      "init";
-      "clone";
-      "status";
-      "add";
-      "commit";
-      "push";
-      "pull";
-      "fetch";
-      "branch";
-      "checkout";
-      "merge";
-      "rebase";
-      "log";
-      "diff";
-      "reset";
-      "revert";
-      "tag";
-      "stash";
-      "remote";
-      "show";
-    ]
-  in
-  match parsed_cmd with
-  | [] -> false
-  | first :: _ -> List.mem supported_git_cmds first ~equal:String.equal
-
-let valid_docktrack_cmd parsed_cmd =
-  let docktrack_subcmds =
-    [
-      "dock_add_feature";
-      "dock_remove_feature";
-      "dock_add_file";
-      "dock_remove_files";
-      "dock_view_code_tree";
-      "dock_view_features";
-      "dock_view_feature";
-      "dock_add_update";
-      "dock_view_updates";
-      "dock_view_update";
-      "dock_document_next_update";
-      "dock_document_update";
-      "dock_remove_update";
-    ]
-  in
-  match parsed_cmd with
-  | [] -> false
-  | first :: _ -> List.mem docktrack_subcmds first ~equal:String.equal
-
-let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
+let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
   let ft = code_tree.feature_tree in
-  match cmd with
-  | [ "dock_view_code_tree" ] ->
+  match cmd :: args with
+  | [ "view-code-tree" ] ->
       Code_tree.CodeTree.print_code_tree code_tree;
       code_tree
-  | [ "dock_view_features" ] ->
+  | [ "view-features" ] ->
       Feature_tree.FeatureTree.print_tree ft;
       code_tree
-  | [ "dock_view_feature"; ft_name ] ->
+  | [ "view-feature"; ft_name ] ->
       Feature_tree.FeatureTree.print_feature ft_name ft;
       code_tree
-  | [ "dock_add_file" ] ->
+  | [ "add-file" ] ->
       let n_file_path =
         Cli_utils.CliUtils.inline_input "File Path"
           (fun path -> Os_utils.OSUtils.validate_file_path path ())
@@ -104,8 +53,8 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
             code_tree
       in
       code_tree'
-  | [ "dock_remove_files" ] -> code_tree
-  | [ "dock_add_feature" ] ->
+  | [ "remove-files" ] -> code_tree
+  | [ "add-feature" ] ->
       let n_ft =
         Cli_utils.CliUtils.inline_input "Feature"
           (fun x -> String.length x > 0)
@@ -155,7 +104,7 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
             ft
       in
       { code_tree with feature_tree = ft' }
-  | "dock_remove_feature" :: ft_name ->
+  | "remove-feature" :: ft_name ->
       let ft_name' = String.concat ~sep:" " ft_name in
       let ft' =
         try Feature_tree.FeatureTree.remove_feature ft_name' ft
@@ -165,7 +114,7 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
           ft
       in
       { code_tree with feature_tree = ft' }
-  | [ "dock_add_update" ] ->
+  | [ "add-update" ] ->
       let feature_name =
         Cli_utils.CliUtils.inline_input "Feature"
           (fun feature -> Feature_tree.FeatureTree.feature_exists feature ft)
@@ -199,14 +148,14 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
           ft
       in
       { code_tree with feature_tree = ft' }
-  | [ "dock_view_updates"; ft_name ] ->
+  | [ "view-updates"; ft_name ] ->
       if Feature_tree.FeatureTree.feature_exists ft_name ft then
         Feature_tree.FeatureTree.print_updates ft_name ft
       else
         Printf.eprintf "Docktrack: No such feature %s in the feature tree"
           ft_name;
       code_tree
-  | [ "dock_view_update"; ft_name; update_name ] ->
+  | [ "view-update"; ft_name; update_name ] ->
       let update_str =
         try
           Feature_tree.FeatureTree.string_of_update ft_name update_name ft
@@ -220,11 +169,10 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
       in
       Printf.eprintf "%s\n" update_str;
       code_tree
-  | [ "dock_document_next_update"; ft_name ] ->
+  | [ "document-next_update"; ft_name ] ->
       let ft' =
         try
           let ft'' = Feature_tree.FeatureTree.document_next_update ft_name ft in
-          (* now pass ft'' into newest_documented_update *)
           let upd =
             match
               Feature_tree.FeatureTree.newest_documented_update ft_name ft''
@@ -247,7 +195,7 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
             ft
       in
       { code_tree with feature_tree = ft' }
-  | [ "dock_document_update"; ft_name; update_name ] ->
+  | [ "document-update"; ft_name; update_name ] ->
       let ft' =
         try
           let ft'' =
@@ -267,7 +215,7 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
             ft
       in
       { code_tree with feature_tree = ft' }
-  | [ "dock_remove_update"; ft_name; update_name ] ->
+  | [ "remove-update"; ft_name; update_name ] ->
       let ft' =
         try
           let ft'' =
@@ -292,16 +240,10 @@ let parse_docktrack_cmd cmd (code_tree : Code_tree.CodeTree.ct) =
         "Docktrack: Invalid command. Please use a valid docktrack command.";
       code_tree
 
-let parse_cmd cmd =
-  if valid_git_subcmd cmd then GitCommand
-  else if valid_docktrack_cmd cmd then DocktrackCommand
-  else InvalidCommand
-
-let simulate_command_shell cmd code_tree =
-  let parsed_output = parse_cmd cmd in
-  match parsed_output with
+let simulate_command_shell cmd subcmd args code_tree =
+  match cmd with
   | GitCommand ->
-      let shell_git_cmd = String.concat ~sep:" " ("git" :: cmd) in
+      let shell_git_cmd = String.concat ~sep:" " ("git" :: subcmd :: args) in
       let git_output = Cli_utils.CliUtils.run_unix shell_git_cmd in
       Cli_utils.CliUtils.print_header "Git";
       Printf.eprintf "%s\n" git_output;
@@ -309,11 +251,7 @@ let simulate_command_shell cmd code_tree =
       Code_tree.CodeTree.validate_code_tree code_tree ()
   | DocktrackCommand ->
       Cli_utils.CliUtils.print_header "Docktrack";
-      parse_docktrack_cmd cmd code_tree
-  | InvalidCommand ->
-      Printf.eprintf "%s\n"
-        "Invalid command. Please use a valid git or docktrack command.";
-      code_tree
+      parse_docktrack_cmd subcmd args code_tree
 
 let _ =
   let read_code_tree =
@@ -324,12 +262,15 @@ let _ =
         { title = "root"; descr = None; url = None }
   in
   let ref_code_tree = ref read_code_tree in
-  let handler cmd =
+  let handler cmd subcmd args =
     let old_tree = !ref_code_tree in
-    let new_tree = simulate_command_shell cmd old_tree in
+    let new_tree = simulate_command_shell cmd subcmd args old_tree in
     ref_code_tree := new_tree;
     Code_tree.CodeTree.save_code_tree new_tree ()
   in
-
+  let git_handler = handler GitCommand in
+  let docktrack_handler = handler DocktrackCommand in
   (* Input from the CLI args - similar to what the final product would do *)
-  Command_unix.run (Cli_utils.CliUtils.read_input_cmd handler)
+  Command_unix.run
+    (Cli_utils.CliUtils.git_docktrack_combined "Docktrack is goated" git_handler
+       docktrack_handler)
