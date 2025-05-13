@@ -2,6 +2,10 @@ open Core
 
 module CliUtils = struct
   type input_bool = Yes | No
+  type flag_input = { label : string; doc : string }
+  type docktrack_subcmd = { cmd : string; flags : flag_input list }
+
+  exception TooManyFlags of int
 
   let print_dashed_line =
    fun () -> Printf.printf "-----------------------------------\n"
@@ -17,16 +21,160 @@ module CliUtils = struct
     In_channel.close inp;
     r
 
-  let read_input_cmd parse_input_cmd =
-    let open Command.Param in
-    let wrapped =
-      map
-        (anon (sequence ("cmd" %: string)))
-        ~f:(fun cmd -> fun () -> parse_input_cmd cmd)
+  let git_subcmd_names =
+    [
+      "init";
+      "clone";
+      "status";
+      "add";
+      "commit";
+      "push";
+      "pull";
+      "fetch";
+      "branch";
+      "checkout";
+      "merge";
+      "rebase";
+      "log";
+      "diff";
+      "reset";
+      "revert";
+      "tag";
+      "stash";
+      "remote";
+      "show";
+    ]
+
+  let git_subcmds =
+    List.map git_subcmd_names ~f:(fun name -> { cmd = name; flags = [] })
+
+  let docktrack_subcmds : docktrack_subcmd list =
+    [
+      {
+        cmd = "view-feature";
+        flags = [ { label = "feature-name"; doc = "Name of the feature to view" } ];
+      };
+      {
+        cmd = "remove-feature";
+        flags = [ { label = "feature-name"; doc = "Name of the feature to remove" } ];
+      };
+      {
+        cmd = "view-updates";
+        flags =
+          [
+            {
+              label = "feature-name";
+              doc = "Name of the feature whose updates to list";
+            };
+          ];
+      };
+      {
+        cmd = "view-update";
+        flags =
+          [
+            { label = "feature-name"; doc = "Name of the feature" };
+            {
+              label = "update-name";
+              doc = "Name of the specific update to view";
+            };
+          ];
+      };
+      {
+        cmd = "document-next-update";
+        flags =
+          [
+            {
+              label = "feature-name";
+              doc = "Name of the feature for which to document the next update";
+            };
+          ];
+      };
+      {
+        cmd = "document-update";
+        flags =
+          [
+            { label = "feature-name"; doc = "Name of the feature" };
+            { label = "update-name"; doc = "Name of the update to document" };
+          ];
+      };
+      {
+        cmd = "remove-update";
+        flags =
+          [
+            { label = "feature-name"; doc = "Name of the feature" };
+            { label = "update-name"; doc = "Name of the update to remove" };
+          ];
+      };
+      { cmd = "add-feature"; flags = [] };
+      { cmd = "add-file"; flags = [] };
+      { cmd = "remove-files"; flags = [] };
+      { cmd = "view-code-tree"; flags = [] };
+      { cmd = "view-features"; flags = [] };
+      { cmd = "add-update"; flags = [] };
+    ]
+
+  let create_basic_command summary handler =
+    Command.basic ~summary
+      (let%map_open.Command () = return () in
+       fun () -> handler [])
+
+  let create_basic_command_one_flag summary flag_input handler =
+    let flag_label = "--" ^ flag_input.label in
+    Command.basic ~summary
+      (let%map_open.Command flag1 =
+         flag flag_label (required string) ~doc:flag_input.doc
+       in
+       fun () -> handler [ flag1 ])
+
+  let create_basic_command_two_flag summary flag_input_one flag_input_two
+      handler =
+    let flag_label_one = "--" ^ flag_input_one.label in
+    let flag_label_two = "--" ^ flag_input_two.label in
+    Command.basic ~summary
+      (let%map_open.Command flag_one =
+         flag flag_label_one (required string) ~doc:flag_input_one.doc
+       and flag_two =
+         flag flag_label_two (required string) ~doc:flag_input_two.doc
+       in
+       fun () -> handler [ flag_one; flag_two ])
+
+  let create_group cmd summary handler valid_cmds =
+    let rec create_group_commands' cmds =
+      match cmds with
+      | { cmd = subcmd; flags } :: rest ->
+          let rest_cmds = create_group_commands' rest in
+          let comb_cmd = cmd ^ " " ^ subcmd in
+          let c_cmd =
+            match flags with
+            | [] -> (subcmd, create_basic_command comb_cmd (handler subcmd))
+            | [ flag ] ->
+                ( subcmd,
+                  create_basic_command_one_flag comb_cmd flag (handler subcmd)
+                )
+            | [ flag_one; flag_two ] ->
+                ( subcmd,
+                  create_basic_command_two_flag comb_cmd flag_one flag_two
+                    (handler subcmd) )
+            | _ -> raise (TooManyFlags (List.length flags))
+          in
+          c_cmd :: rest_cmds
+      | [] -> []
     in
-    Command.basic ~summary:"Wrapping git commands with docktrack"
-      ~readme:(fun () -> "This command wraps git commands with docktrack.")
-      wrapped
+    let cmd_grp = create_group_commands' valid_cmds in
+    Command.group ~summary cmd_grp
+
+  let git_docktrack_combined summary git_handler docktrack_handler =
+    let git_group =
+      create_group "git"
+        "Docktrack has custom commands accesed through git subcmd" git_handler
+        git_subcmds
+    in
+    let docktrack_group =
+      create_group "docktrack"
+        "Docktrack has custom commands accesed through dock subcmd"
+        docktrack_handler docktrack_subcmds
+    in
+    Command.group ~summary [ ("git", git_group); ("dock", docktrack_group) ]
 
   let trim_string str =
     let rec trim_string' str in_quote =
