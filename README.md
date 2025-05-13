@@ -133,6 +133,12 @@ Please follow OCaml formatting conventions and include type annotations where ap
 
 ---
 
+## ✅ TODO
+
+This project isn't even close to being finished. There are two featuers I hope to add in the future
+- [ ] Block git commands if any files with undocumented features are present
+- [ ] Lots of manual work in setting up features with title, descriptions, links, etc. Could utilize LLMs to reduce mundane work.
+
 ## 📄 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

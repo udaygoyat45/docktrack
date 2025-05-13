@@ -3,3 +3,4 @@ _opam/
 .merlin
 .ocamlformat
 .docktrack
+.DS_STORE
