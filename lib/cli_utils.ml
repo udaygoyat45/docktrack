@@ -2,6 +2,7 @@ open Core
 
 module CliUtils = struct
   type input_bool = Yes | No
+
   let print_dashed_line =
    fun () -> Printf.printf "-----------------------------------\n"
 
@@ -27,24 +28,33 @@ module CliUtils = struct
       ~readme:(fun () -> "This command wraps git commands with docktrack.")
       wrapped
 
-
-  let trim_string str = 
-    let rec trim_string' str in_quote = 
+  let trim_string str =
+    let rec trim_string' str in_quote =
       if String.is_empty str then str
-      else (
+      else
         let fl = String.get str 0 in
         let ll = String.get str (String.length str - 1) in
         if Char.equal fl ' ' then
-          trim_string' (String.sub str ~pos:1 ~len:(String.length str - 1)) in_quote
+          trim_string'
+            (String.sub str ~pos:1 ~len:(String.length str - 1))
+            in_quote
         else if Char.equal ll ' ' then
-          trim_string' (String.sub str ~pos:0 ~len:(String.length str - 1)) in_quote
-        else if not in_quote && String.length str > 2 && Char.equal fl '"' && Char.equal ll '"' then
-          trim_string' (String.sub str ~pos:1 ~len:(String.length str - 2)) in_quote
-        else
-          str
-      )
-        in trim_string' str false
+          trim_string'
+            (String.sub str ~pos:0 ~len:(String.length str - 1))
+            in_quote
+        else if
+          (not in_quote)
+          && String.length str > 2
+          && Char.equal fl '"' && Char.equal ll '"'
+        then
+          trim_string'
+            (String.sub str ~pos:1 ~len:(String.length str - 2))
+            in_quote
+        else str
+    in
+    trim_string' str false
 
+  type input_validate = { validator : string -> bool; error_msg : string }
 
   let inline_input ?optional query validator error_msg =
     let requery () =
@@ -70,6 +80,38 @@ module CliUtils = struct
     let raw_input = inline_input' () in
     trim_string raw_input
 
+  let inline_input_multi ?optional query input_validators general_error_msg =
+    let requery error_msg () =
+      Printf.printf "%s\n" error_msg;
+      Printf.printf "%s: " query;
+      Out_channel.flush stdout
+    in
+    let rec loop_validate' input input_validators' =
+      match input_validators' with
+      | { validator; error_msg } :: rest ->
+          if validator input then loop_validate' input rest
+          else `Error error_msg
+      | [] -> `Ok
+    in
+    printf "%s: " query;
+    Out_channel.flush stdout;
+    let rec inline_input' () =
+      let output = String.strip (In_channel.input_line_exn In_channel.stdin) in
+      if String.length output = 0 then (
+        match optional with
+        | Some opt_val -> opt_val
+        | None ->
+            requery general_error_msg ();
+            inline_input' ())
+      else
+        match loop_validate' output input_validators with
+        | `Ok -> output
+        | `Error error_msg ->
+            requery error_msg ();
+            inline_input' ()
+    in
+    let raw_input = inline_input' () in
+    trim_string raw_input
 
   let inline_input_bool query =
     let valid_yes =

@@ -305,7 +305,8 @@ let simulate_command_shell cmd code_tree =
       let git_output = Cli_utils.CliUtils.run_unix shell_git_cmd in
       Cli_utils.CliUtils.print_header "Git";
       print_endline git_output;
-      code_tree
+      Cli_utils.CliUtils.print_header "Post-Git";
+      Code_tree.CodeTree.validate_code_tree code_tree ()
   | DocktrackCommand ->
       Cli_utils.CliUtils.print_header "Docktrack";
       parse_docktrack_cmd cmd code_tree
