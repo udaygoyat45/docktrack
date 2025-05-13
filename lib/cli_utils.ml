@@ -52,11 +52,13 @@ module CliUtils = struct
     [
       {
         cmd = "view-feature";
-        flags = [ { label = "feature-name"; doc = "Name of the feature to view" } ];
+        flags =
+          [ { label = "feature-name"; doc = "Name of the feature to view" } ];
       };
       {
         cmd = "remove-feature";
-        flags = [ { label = "feature-name"; doc = "Name of the feature to remove" } ];
+        flags =
+          [ { label = "feature-name"; doc = "Name of the feature to remove" } ];
       };
       {
         cmd = "view-updates";
@@ -105,9 +107,13 @@ module CliUtils = struct
             { label = "update-name"; doc = "Name of the update to remove" };
           ];
       };
+      {
+        cmd = "remove-file";
+        flags =
+          [ { label = "file-path"; doc = "Path of the file to be removed" } ];
+      };
       { cmd = "add-feature"; flags = [] };
       { cmd = "add-file"; flags = [] };
-      { cmd = "remove-files"; flags = [] };
       { cmd = "view-code-tree"; flags = [] };
       { cmd = "view-features"; flags = [] };
       { cmd = "add-update"; flags = [] };
