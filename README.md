@@ -15,9 +15,10 @@ Docktrack (public executable: `auto_documentation`) is a command-line interface 
 * **Manage Files & Features**
 
   * `add-file`: Prompt to add a new file to the code tree and associate it with features.
-  * `remove-files`: Remove files from the code tree.
+  * `remove-file <file_path>`: Remove files from the code tree.
   * `add-feature`: Create a new feature node in the feature tree (with title, description, URL).
   * `remove-feature <feature_name>`: Delete a feature (except the root).
+  * `add-feature-to-files`: Associate a feature to files en masse.
 
 * **Track Documentation Updates**
 
@@ -98,8 +99,9 @@ auto_documentation <namespace> <command> [args]
 | `view-features`                          | Show the full feature hierarchy.                              |
 | `view-feature <feature_name>`            | Display metadata and update history for a specific feature.   |
 | `add-file`                               | Prompt for file path and assign features to the new file.     |
-| `remove-files`                           | Remove one or more files from the code tree.                  |
+| `remove-file <file_path>`                | Remove one or more files from the code tree.                  |
 | `add-feature`                            | Create a new feature (name, parent, title, description, URL). |
+| `add-feature-to-files`                   | Associate a feature with files present in the code tree.      |
 | `remove-feature <feature_name>`          | Delete an existing feature (cannot delete the project root).  |
 | `add-update`                             | Record a new documentation update under a feature.            |
 | `view-updates <feature_name>`            | List all updates with status for a feature.                   |
