@@ -13,6 +13,7 @@ module CodeTree = struct
 
   exception DuplicateFile of string
   exception MissingFile of string
+  exception InvalidFilePath of string
 
   let empty_ct project_name project_data =
     {
@@ -38,10 +39,18 @@ module CodeTree = struct
     let a = Map.remove file_map new_file_data.path in
     Map.add a ~key:new_file_data.path ~data:new_file_data
 
-  let add_feature file_name feature_name { file_map; feature_tree } =
+  let remove_file file_path { file_map; feature_tree } =
+    if not (Os_utils.OSUtils.validate_file_path file_path ()) then
+      raise (InvalidFilePath file_path)
+    else if not (Map.mem file_map file_path) then raise (MissingFile file_path)
+    else
+      let file_map' = Map.remove file_map file_path in
+      { feature_tree; file_map = file_map' }
+
+  let add_feature file_path feature_name { file_map; feature_tree } =
     let file =
-      match Map.find file_map file_name with
-      | None -> raise (MissingFile file_name)
+      match Map.find file_map file_path with
+      | None -> raise (MissingFile file_path)
       | Some file' -> file'
     in
     if Set.mem file.feature_names feature_name then
@@ -52,24 +61,24 @@ module CodeTree = struct
       let file' =
         { file with feature_names = Set.add file.feature_names feature_name }
       in
-      let file_map' = Map.add file_map ~key:file_name ~data:file' in
+      let file_map' = Map.add file_map ~key:file_path ~data:file' in
       match file_map' with
       | `Ok map -> { file_map = map; feature_tree }
-      | `Duplicate -> raise (DuplicateFile file_name)
+      | `Duplicate -> raise (DuplicateFile file_path)
 
-  let remove_feature file_name feature_name { file_map; feature_tree } =
-    let file = Map.find file_map file_name in
-    let file = Ds_utils.bind_exn file (MissingFile file_name) in
+  let remove_feature file_path feature_name { file_map; feature_tree } =
+    let file = Map.find file_map file_path in
+    let file = Ds_utils.bind_exn file (MissingFile file_path) in
     if not (Set.mem file.feature_names feature_name) then
       raise (Feature_tree.FeatureTree.MissingFeature feature_name)
     else
       let file' =
         { file with feature_names = Set.remove file.feature_names feature_name }
       in
-      let file_map' = Map.add file_map ~key:file_name ~data:file' in
+      let file_map' = Map.add file_map ~key:file_path ~data:file' in
       match file_map' with
       | `Ok map -> { file_map = map; feature_tree }
-      | `Duplicate -> raise (DuplicateFile file_name)
+      | `Duplicate -> raise (DuplicateFile file_path)
 
   let feature_exists { feature_tree; _ } feature_name =
     Map.mem feature_tree.feature_map feature_name
@@ -110,8 +119,9 @@ module CodeTree = struct
       | file :: rest ->
           let error_msg =
             Printf.sprintf
-              "File: %s is missing; Would you like to update location (no \
-               would result in deletion)"
+              "FILE: %s IS MISSING\n\
+               Would you like to update location\n\
+               P.S. Choosing NO would lead to removal from code tree"
               file.path
           in
           let keep_query = Cli_utils.CliUtils.inline_input_bool error_msg in
@@ -136,7 +146,6 @@ module CodeTree = struct
                             let c_file_name =
                               Os_utils.OSUtils.extract_file_name x
                             in
-                            Printf.printf "DEBUGGING: %s\n" c_file_name;
                             not (Map.mem file_map' c_file_name));
                         error_msg =
                           "This file path already exists within the Code Tree.";
@@ -146,8 +155,8 @@ module CodeTree = struct
                 in
                 let new_name = Os_utils.OSUtils.extract_file_name new_path in
                 let new_file = { file with name = new_name; path = new_path } in
-                Map.update file_map' file.name ~f:(fun _ -> new_file)
-            | Cli_utils.CliUtils.No -> Map.remove file_map' file.name
+                Map.update file_map' file.path ~f:(fun _ -> new_file)
+            | Cli_utils.CliUtils.No -> Map.remove file_map' file.path
           in
           update_missing_files rest file_map'
       | [] -> file_map'

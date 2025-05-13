@@ -43,17 +43,28 @@ let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
       let code_tree' =
         try Code_tree.CodeTree.add_file file_data code_tree with
         | Code_tree.CodeTree.DuplicateFile name ->
-            Printf.eprintf "Docktrack: File %s already exists in the code tree"
+            Printf.printf "Docktrack: File %s already exists in the code tree"
               name;
             code_tree
         | Code_tree.CodeTree.MissingFile path ->
-            Printf.eprintf
+            Printf.printf
               "Docktrack: Invalid file path %s. Please provide a valid path"
               path;
             code_tree
       in
       code_tree'
-  | [ "remove-files" ] -> code_tree
+  | [ "remove-file"; file_path ] ->
+      let code_tree' =
+        try Code_tree.CodeTree.remove_file file_path code_tree with
+        | Code_tree.CodeTree.InvalidFilePath file_path ->
+            Printf.printf "No file found at this path: %s\n" file_path;
+            code_tree
+        | Code_tree.CodeTree.MissingFile file_path ->
+            Printf.printf "No file found in the code tree with this path: %s\n"
+              file_path;
+            code_tree
+      in
+      code_tree'
   | [ "add-feature" ] ->
       let n_ft =
         Cli_utils.CliUtils.inline_input "Feature"
@@ -95,11 +106,11 @@ let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
       let ft' =
         try Feature_tree.FeatureTree.add_feature n_ft n_pft n_metadata ft with
         | Feature_tree.FeatureTree.MissingParentFeature name ->
-            Printf.eprintf
+            Printf.printf
               "Docktrack: No such feature (parent) %s in the feature tree" name;
             ft
         | Feature_tree.FeatureTree.DuplicateFeatureName name ->
-            Printf.eprintf
+            Printf.printf
               "Docktrack: Feature %s already exists in the feature tree" name;
             ft
       in
@@ -109,7 +120,7 @@ let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
       let ft' =
         try Feature_tree.FeatureTree.remove_feature ft_name' ft
         with Feature_tree.FeatureTree.DeletingProjectRoot msg ->
-          Printf.eprintf "Docktrack: Cannot delete the project root feature %s"
+          Printf.printf "Docktrack: Cannot delete the project root feature %s"
             msg;
           ft
       in
@@ -143,8 +154,7 @@ let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
       let ft' =
         try Feature_tree.FeatureTree.add_update update feature_name ft
         with Feature_tree.FeatureTree.MissingFeature name ->
-          Printf.eprintf "Docktrack: No such feature %s in the feature tree"
-            name;
+          Printf.printf "Docktrack: No such feature %s in the feature tree" name;
           ft
       in
       { code_tree with feature_tree = ft' }
@@ -152,7 +162,7 @@ let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
       if Feature_tree.FeatureTree.feature_exists ft_name ft then
         Feature_tree.FeatureTree.print_updates ft_name ft
       else
-        Printf.eprintf "Docktrack: No such feature %s in the feature tree"
+        Printf.printf "Docktrack: No such feature %s in the feature tree"
           ft_name;
       code_tree
   | [ "view-update"; ft_name; update_name ] ->
@@ -167,7 +177,7 @@ let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
             Printf.sprintf "Docktrack: No such feature %s in the feature tree"
               name
       in
-      Printf.eprintf "%s\n" update_str;
+      Printf.printf "%s\n" update_str;
       code_tree
   | [ "document-next-update"; ft_name ] ->
       let ft' =
@@ -180,16 +190,16 @@ let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
             | Some u -> u
             | None -> failwith "No documented updates available"
           in
-          Printf.eprintf "Docktrack: Documented feature %s\n"
+          Printf.printf "Docktrack: Documented feature %s\n"
             (Feature_update.FeatureUpdate.string_of_update upd);
           ft''
         with
         | Feature_tree.FeatureTree.MissingFeature name ->
-            Printf.eprintf "Docktrack: No such feature %s in the feature tree\n"
+            Printf.printf "Docktrack: No such feature %s in the feature tree\n"
               name;
             ft
         | Feature_tree.FeatureTree.EmptyUndocumentedUpdates ->
-            Printf.eprintf
+            Printf.printf
               "Docktrack: No undocumented updates available for feature %s\n"
               ft_name;
             ft
@@ -201,16 +211,16 @@ let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
           let ft'' =
             Feature_tree.FeatureTree.document_update ft_name update_name ft
           in
-          Printf.eprintf "Docktrack: Documented update: %s\n"
+          Printf.printf "Docktrack: Documented update: %s\n"
             (Feature_tree.FeatureTree.string_of_update ft_name update_name ft);
           ft''
         with
         | Feature_tree.FeatureTree.MissingFeature name ->
-            Printf.eprintf "Docktrack: No such feature %s in the feature tree\n"
+            Printf.printf "Docktrack: No such feature %s in the feature tree\n"
               name;
             ft
         | Feature_tree.FeatureTree.MissingUpdate (name, update_name) ->
-            Printf.eprintf "Docktrack: No such update %s in the feature %s\n"
+            Printf.printf "Docktrack: No such update %s in the feature %s\n"
               update_name name;
             ft
       in
@@ -221,22 +231,22 @@ let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
           let ft'' =
             Feature_tree.FeatureTree.remove_update ft_name update_name ft
           in
-          Printf.eprintf "Docktrack: Removed update %s\n"
+          Printf.printf "Docktrack: Removed update %s\n"
             (Feature_tree.FeatureTree.string_of_update ft_name update_name ft);
           ft''
         with
         | Feature_tree.FeatureTree.MissingFeature name ->
-            Printf.eprintf "Docktrack: No such feature %s in the feature tree\n"
+            Printf.printf "Docktrack: No such feature %s in the feature tree\n"
               name;
             ft
         | Feature_tree.FeatureTree.MissingUpdate (name, update_name) ->
-            Printf.eprintf "Docktrack: No such update %s in the feature %s\n"
+            Printf.printf "Docktrack: No such update %s in the feature %s\n"
               update_name name;
             ft
       in
       { code_tree with feature_tree = ft' }
   | _ ->
-      Printf.eprintf "%s\n"
+      Printf.printf "%s\n"
         "Docktrack: Invalid command. Please use a valid docktrack command.";
       code_tree
 
@@ -246,8 +256,8 @@ let simulate_command_shell cmd subcmd args code_tree =
       let shell_git_cmd = String.concat ~sep:" " ("git" :: subcmd :: args) in
       let git_output = Cli_utils.CliUtils.run_unix shell_git_cmd in
       Cli_utils.CliUtils.print_header "Git";
-      Printf.eprintf "%s\n" git_output;
-      Cli_utils.CliUtils.print_header "Post-Git";
+      Printf.printf "%s\n" git_output;
+      Cli_utils.CliUtils.print_header "Post-Git Docktrack Validator";
       Code_tree.CodeTree.validate_code_tree code_tree ()
   | DocktrackCommand ->
       Cli_utils.CliUtils.print_header "Docktrack";
