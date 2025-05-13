@@ -112,6 +112,12 @@ module CliUtils = struct
         flags =
           [ { label = "file-path"; doc = "Path of the file to be removed" } ];
       };
+      {
+        cmd = "add-feature-to-files";
+        flags =
+          [ { label = "feature-name"; doc = "Name of the feature" } ];
+      };
+
       { cmd = "add-feature"; flags = [] };
       { cmd = "add-file"; flags = [] };
       { cmd = "view-code-tree"; flags = [] };
