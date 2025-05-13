@@ -47,25 +47,6 @@ module CodeTree = struct
       let file_map' = Map.remove file_map file_path in
       { feature_tree; file_map = file_map' }
 
-  let add_feature file_path feature_name { file_map; feature_tree } =
-    let file =
-      match Map.find file_map file_path with
-      | None -> raise (MissingFile file_path)
-      | Some file' -> file'
-    in
-    if Set.mem file.feature_names feature_name then
-      raise (Feature_tree.FeatureTree.DuplicateFeatureName feature_name);
-    if not (Map.mem feature_tree.feature_map feature_name) then
-      raise (Feature_tree.FeatureTree.MissingFeature feature_name)
-    else
-      let file' =
-        { file with feature_names = Set.add file.feature_names feature_name }
-      in
-      let file_map' = Map.add file_map ~key:file_path ~data:file' in
-      match file_map' with
-      | `Ok map -> { file_map = map; feature_tree }
-      | `Duplicate -> raise (DuplicateFile file_path)
-
   let remove_feature file_path feature_name { file_map; feature_tree } =
     let file = Map.find file_map file_path in
     let file = Ds_utils.bind_exn file (MissingFile file_path) in
