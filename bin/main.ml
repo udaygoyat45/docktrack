@@ -169,7 +169,7 @@ let parse_docktrack_cmd cmd args (code_tree : Code_tree.CodeTree.ct) =
       in
       Printf.eprintf "%s\n" update_str;
       code_tree
-  | [ "document-next_update"; ft_name ] ->
+  | [ "document-next-update"; ft_name ] ->
       let ft' =
         try
           let ft'' = Feature_tree.FeatureTree.document_next_update ft_name ft in
@@ -271,6 +271,7 @@ let _ =
   let git_handler = handler GitCommand in
   let docktrack_handler = handler DocktrackCommand in
   (* Input from the CLI args - similar to what the final product would do *)
+
   Command_unix.run
     (Cli_utils.CliUtils.git_docktrack_combined "Docktrack is goated" git_handler
        docktrack_handler)
