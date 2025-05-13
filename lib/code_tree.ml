@@ -1,4 +1,3 @@
-open Ds_utils
 open Core
 
 module CodeTree = struct
@@ -81,7 +80,7 @@ module CodeTree = struct
     else
       Map.iter file_map ~f:(fun file ->
           let feature_names =
-            SetUtils.string_of_string_set ~sep:',' file.feature_names
+            Ds_utils.SetUtils.string_of_string_set ~sep:',' file.feature_names
           in
           Printf.printf "File: %s\nFeatures: %s\n" file.name feature_names)
 
@@ -97,4 +96,64 @@ module CodeTree = struct
     let data = In_channel.read_all read_path in
     let sexp = Sexp.of_string data in
     ct_of_sexp sexp
+
+  let validate_code_tree { file_map; feature_tree } () =
+    let missing_files =
+      Map.fold file_map ~init:[] ~f:(fun ~key:_ ~data:file acc ->
+          if not (Os_utils.OSUtils.validate_file_path file.path ()) then
+            file :: acc
+          else acc)
+    in
+    let rec update_missing_files missing_files file_map' =
+      match missing_files with
+      | file :: rest ->
+          let error_msg =
+            Printf.sprintf
+              "File: %s is missing; Would you like to update location (no \
+               would result in deletion)"
+              file.path
+          in
+          let keep_query = Cli_utils.CliUtils.inline_input_bool error_msg in
+          let file_map' =
+            match keep_query with
+            | Cli_utils.CliUtils.Yes ->
+                let new_path =
+                  Cli_utils.CliUtils.inline_input_multi "New file path"
+                    [
+                      {
+                        validator = (fun x -> String.length x > 0);
+                        error_msg = "The file length cannot be empty";
+                      };
+                      {
+                        validator =
+                          (fun x -> Os_utils.OSUtils.validate_file_path x ());
+                        error_msg = "Please provide a valid, regular file path";
+                      };
+                      {
+                        validator =
+                          (fun x ->
+                            let c_file_name =
+                              Os_utils.OSUtils.extract_file_name x
+                            in
+                            Printf.printf "DEBUGGING: %s\n" c_file_name;
+                            not (Map.mem file_map' c_file_name));
+                        error_msg =
+                          "This file path already exists within the Code Tree.";
+                      };
+                    ]
+                    "Please provide a valid regular file path"
+                in
+                let new_name = Os_utils.OSUtils.extract_file_name new_path in
+                let new_file = { file with name = new_name; path = new_path } in
+                Map.update file_map' file.name ~f:(fun _ -> new_file)
+            | Cli_utils.CliUtils.No -> Map.remove file_map' file.name
+          in
+          update_missing_files rest file_map'
+      | [] -> file_map'
+    in
+    let updated_file_map = update_missing_files missing_files file_map in
+    if List.length missing_files > 0 then
+      Printf.printf "The code tree been validated\n"
+    else Printf.printf "No files need validation\n";
+    { file_map = updated_file_map; feature_tree }
 end
